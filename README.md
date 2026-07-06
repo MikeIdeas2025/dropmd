@@ -34,7 +34,7 @@ curl -X POST --data-binary @report.pdf \
 
 ## Stack
 
-- **Frontend:** single `index.html`, vanilla JS, zero build step
+- **Frontend:** single static page (`public/index.html`), vanilla JS, zero build step
 - **Backend:** one Vercel Python function ([`api/convert.py`](api/convert.py)) wrapping MarkItDown
 - Files are converted **in memory** and never stored or logged
 
