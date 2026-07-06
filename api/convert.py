@@ -44,6 +44,21 @@ def _json_bytes(payload: dict) -> bytes:
     return json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
 
+def _landing_html() -> bytes | None:
+    """The Python app captures '/' on Vercel, so it serves the landing itself."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    for candidate in (
+        os.path.join(here, "..", "public", "index.html"),
+        os.path.join(os.getcwd(), "public", "index.html"),
+    ):
+        try:
+            with open(candidate, "rb") as f:
+                return f.read()
+        except OSError:
+            continue
+    return None
+
+
 USAGE = {
     "service": "DropMD — https://github.com/MikeIdeas2025/dropmd",
     "usage": (
@@ -74,7 +89,21 @@ class handler(BaseHTTPRequestHandler):
         self._send(204, {})
 
     def do_GET(self):
-        self._send(200, USAGE)
+        path = urlparse(self.path).path
+        if path.startswith("/api/"):
+            return self._send(200, USAGE)
+        html = _landing_html()
+        if html is None:
+            self.send_response(307)
+            self.send_header("Location", "/index.html")
+            self.end_headers()
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(html)))
+        self.send_header("Cache-Control", "public, max-age=0, must-revalidate")
+        self.end_headers()
+        self.wfile.write(html)
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length") or 0)
