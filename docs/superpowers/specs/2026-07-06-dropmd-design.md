@@ -87,6 +87,12 @@ No frameworks, no analytics in v1 (PostHog is a fast follow), dark theme, Englis
 - GitHub: `MikeIdeas2025/dropmd`, public, MIT.
 - Vercel: project `dropmd` → production deploy via CLI.
 
+## v2 — 2026-07-07 (Loom-style redesign + i18n)
+
+- **UI**: light theme inspired by Loom (violet #625DF5, Plus Jakarta Sans, pill buttons, soft cards, lilac accents). Replaced the dark neon-gradient theme, emoji icons and gradient text (AI-slop markers) with inline SVG icons and a solid accent color.
+- **i18n**: EN/IT switch in nav. JS dictionary + `data-i18n`/`data-i18n-html` attributes; auto-detects `navigator.language`, persists in localStorage, updates `<html lang>`. Runtime strings (loading, errors, buttons) localized too; API errors mapped client-side by status code so Italian users get Italian messages.
+- **Copy**: humanizer pass on both languages. Removed em dashes, rule-of-three lists, slogan headlines and tailing negations; replaced with concrete claims (e.g. "The file never touches a disk. It is discarded the moment the response is sent back to you.").
+
 ## Roadmap (not in v1)
 
 - URL/YouTube input · batch & >4MB via Blob upload (Pro) · API keys · PostHog analytics · image OCR & audio transcription (needs LLM/Azure keys) · custom domain.
