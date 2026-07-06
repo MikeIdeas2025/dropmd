@@ -1,2 +1,11 @@
+[project]
+name = "dropmd"
+version = "1.0.0"
+description = "Drop any file. Get LLM-ready Markdown. Free converter powered by microsoft/markitdown."
+requires-python = ">=3.10"
+dependencies = [
+    "markitdown[pdf,docx,pptx,xlsx]==0.1.6",
+]
+
 [tool.vercel]
 entrypoint = "api.convert:handler"
