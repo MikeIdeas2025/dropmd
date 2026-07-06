@@ -27,9 +27,9 @@ Single Vercel project, no build step:
 
 ```
 dropmd/
-├── index.html          # landing + converter app (vanilla JS, inline CSS)
 ├── api/
-│   └── convert.py      # Vercel Python function — MarkItDown engine
+│   ├── _landing.html   # landing + converter app (vanilla JS, served by the function)
+│   └── convert.py      # Vercel Python function — MarkItDown engine + landing routes
 ├── requirements.txt    # markitdown[pdf,docx,pptx,xlsx]==0.1.6
 ├── vercel.json         # maxDuration 60
 ├── README.md, LICENSE (MIT), .gitignore

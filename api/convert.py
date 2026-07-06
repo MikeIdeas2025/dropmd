@@ -12,18 +12,11 @@ import os
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
-from markitdown import MarkItDown, StreamInfo
-from markitdown._exceptions import (
-    FileConversionException,
-    MarkItDownException,
-    MissingDependencyException,
-    UnsupportedFormatException,
-)
-
 MAX_BYTES = 4 * 1024 * 1024  # Vercel rejects bodies >4.5MB; we cap at 4MB
 
-# Module-level so warm invocations skip magika model loading
-_md = MarkItDown(enable_plugins=False)
+# Lazily initialized: importing markitdown loads magika's ML model (~seconds),
+# and GET / must serve the landing page without paying that cost.
+_md = None
 
 SUPPORTED_EXTENSIONS = {
     ".pdf", ".docx", ".pptx", ".xlsx", ".xls",
@@ -34,6 +27,11 @@ SUPPORTED_EXTENSIONS = {
 
 def convert_bytes(data: bytes, filename: str) -> str:
     """Convert a file's bytes to Markdown using MarkItDown."""
+    from markitdown import MarkItDown, StreamInfo
+
+    global _md
+    if _md is None:
+        _md = MarkItDown(enable_plugins=False)
     ext = os.path.splitext(filename)[1].lower()
     info = StreamInfo(extension=ext or None, filename=filename or None)
     result = _md.convert_stream(io.BytesIO(data), stream_info=info)
@@ -46,17 +44,12 @@ def _json_bytes(payload: dict) -> bytes:
 
 def _landing_html() -> bytes | None:
     """The Python app captures '/' on Vercel, so it serves the landing itself."""
-    here = os.path.dirname(os.path.abspath(__file__))
-    for candidate in (
-        os.path.join(here, "..", "public", "index.html"),
-        os.path.join(os.getcwd(), "public", "index.html"),
-    ):
-        try:
-            with open(candidate, "rb") as f:
-                return f.read()
-        except OSError:
-            continue
-    return None
+    try:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_landing.html")
+        with open(path, "rb") as f:
+            return f.read()
+    except OSError:
+        return None
 
 
 USAGE = {
@@ -122,11 +115,13 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             markdown = convert_bytes(data, filename)
-        except (UnsupportedFormatException, MissingDependencyException):
-            return self._send(415, {"ok": False, "error": f"Unsupported file format: '{filename}'. See GET /api/convert for supported formats."})
-        except (FileConversionException, MarkItDownException):
-            return self._send(422, {"ok": False, "error": "Conversion failed. The file may be corrupted or password-protected."})
-        except Exception:
+        except Exception as e:
+            # markitdown is imported lazily, so classify its exceptions by name
+            names = {c.__name__ for c in type(e).__mro__}
+            if names & {"UnsupportedFormatException", "MissingDependencyException"}:
+                return self._send(415, {"ok": False, "error": f"Unsupported file format: '{filename}'. See GET /api/convert for supported formats."})
+            if names & {"FileConversionException", "MarkItDownException"}:
+                return self._send(422, {"ok": False, "error": "Conversion failed. The file may be corrupted or password-protected."})
             return self._send(422, {"ok": False, "error": "Unexpected conversion error. Try a different file."})
 
         self._send(200, {
