@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DropMD — Drop any file. Get LLM-ready Markdown.</title>
+<meta name="description" content="Free online converter: turn PDF, Word, PowerPoint, Excel, HTML and more into clean, token-efficient Markdown for ChatGPT, Claude and RAG pipelines. Powered by Microsoft MarkItDown.">
+<meta property="og:title" content="DropMD — Drop any file. Get LLM-ready Markdown.">
+<meta property="og:description" content="Free converter: PDF, Word, PowerPoint, Excel → clean Markdown for your LLM. Files processed in memory, never stored.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬇️</text></svg>">
+<style>
+:root{
+  --bg:#0b0e14; --bg2:#10141d; --card:#151a26; --border:#232a3a;
+  --text:#e8ecf4; --muted:#8b94a7; --accent:#34d399; --accent2:#22d3ee;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+nav{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
+.logo{font-weight:800;font-size:20px;letter-spacing:-.5px;color:var(--text)}
+.logo span{color:var(--accent)}
+nav .links a{color:var(--muted);margin-left:22px;font-size:14px}
+nav .links a:hover{color:var(--text);text-decoration:none}
+.badge{display:inline-block;background:rgba(52,211,153,.12);color:var(--accent);border:1px solid rgba(52,211,153,.35);border-radius:99px;padding:4px 14px;font-size:13px;font-weight:600;margin-bottom:20px}
+.hero{text-align:center;padding:56px 0 28px}
+h1{font-size:clamp(32px,6vw,52px);line-height:1.12;letter-spacing:-1.5px;font-weight:800}
+h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted);max-width:620px;margin:18px auto 0;font-size:18px}
+.sub b{color:var(--text);font-weight:600}
+/* converter */
+.converter{margin:36px auto 0;max-width:720px}
+.drop{border:2px dashed var(--border);border-radius:16px;background:var(--card);padding:48px 24px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--accent);background:#17202e}
+.drop .icon{font-size:40px}
+.drop p{margin-top:10px;color:var(--muted)}
+.drop p b{color:var(--text)}
+.drop small{display:block;margin-top:8px;color:var(--muted);font-size:12.5px}
+#file{display:none}
+.state{display:none;border:1px solid var(--border);border-radius:16px;background:var(--card);padding:28px;text-align:center}
+.spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;margin:0 auto 14px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-box{display:none;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.08);color:#fca5a5;border-radius:12px;padding:14px 18px;margin-top:14px;font-size:14.5px;text-align:left}
+.result{display:none;border:1px solid var(--border);border-radius:16px;background:var(--card);overflow:hidden;text-align:left}
+.result header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.result header .fname{font-family:var(--mono);font-size:13.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40%}
+.chip{font-size:12px;font-family:var(--mono);color:var(--accent);background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);border-radius:99px;padding:2px 10px}
+.result header .spacer{flex:1}
+button{font:600 13.5px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;border-radius:9px;padding:9px 16px;cursor:pointer;border:1px solid var(--border);background:#1c2333;color:var(--text)}
+button:hover{border-color:var(--accent)}
+button.primary{background:linear-gradient(90deg,var(--accent),#2dd4bf);border:none;color:#04211a}
+button.primary:hover{filter:brightness(1.08)}
+.md-out{max-height:420px;overflow:auto;padding:18px;font-family:var(--mono);font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word;color:#d3dae6}
+/* sections */
+section{padding:64px 0 8px}
+h2{font-size:28px;letter-spacing:-.5px;margin-bottom:8px}
+.lead{color:var(--muted);margin-bottom:28px;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.fmt{border:1px solid var(--border);background:var(--card);border-radius:12px;padding:16px;text-align:center}
+.fmt .ext{font-family:var(--mono);font-weight:700;color:var(--accent)}
+.fmt small{color:var(--muted);font-size:12.5px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.step{border:1px solid var(--border);background:var(--card);border-radius:14px;padding:22px}
+.step .n{font-family:var(--mono);color:var(--accent);font-weight:700;font-size:13px}
+.step h3{margin:8px 0 6px;font-size:17px}
+.step p{color:var(--muted);font-size:14.5px}
+pre.code{background:#0d1117;border:1px solid var(--border);border-radius:12px;padding:18px;font-family:var(--mono);font-size:13px;overflow-x:auto;color:#c9d1d9}
+pre.code .c{color:#8b949e}
+details{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:16px 20px;margin-bottom:10px}
+summary{cursor:pointer;font-weight:600;font-size:15.5px}
+details p{color:var(--muted);margin-top:10px;font-size:14.5px}
+footer{border-top:1px solid var(--border);margin-top:72px;padding:28px 0 40px;color:var(--muted);font-size:14px;display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between}
+@media (max-width:640px){nav .links a{margin-left:14px}.result header .fname{max-width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="logo">Drop<span>MD</span></div>
+    <div class="links">
+      <a href="#formats">Formats</a>
+      <a href="#api">API</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/MikeIdeas2025/dropmd" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="badge">100% free while in beta · no signup</div>
+    <h1>Drop any file.<br>Get <em>LLM-ready Markdown</em>.</h1>
+    <p class="sub">Turn PDF, Word, PowerPoint, Excel and more into clean, <b>token-efficient Markdown</b> — headings, tables and lists preserved. Built for ChatGPT, Claude and RAG pipelines. Powered by Microsoft's open-source <b>MarkItDown</b> engine.</p>
+  </div>
+
+  <div class="converter">
+    <div class="drop" id="drop">
+      <div class="icon">📄→📝</div>
+      <p><b>Drop a file here</b> or click to browse</p>
+      <small>PDF · Word · PowerPoint · Excel · HTML · CSV · JSON · XML · EPub · ZIP — up to 4MB</small>
+      <input type="file" id="file">
+    </div>
+    <div class="state" id="loading">
+      <div class="spinner"></div>
+      <p id="loading-msg">Converting…</p>
+    </div>
+    <div class="result" id="result">
+      <header>
+        <span class="fname" id="r-name"></span>
+        <span class="chip" id="r-tokens"></span>
+        <span class="spacer"></span>
+        <button class="primary" id="btn-copy">Copy Markdown</button>
+        <button id="btn-dl">Download .md</button>
+        <button id="btn-new">New file</button>
+      </header>
+      <div class="md-out" id="r-md"></div>
+    </div>
+    <div class="error-box" id="error"></div>
+  </div>
+
+  <section id="formats">
+    <h2>One converter, every format</h2>
+    <p class="lead">DropMD reads the document structure — not just the text — and rewrites it as Markdown your LLM actually understands.</p>
+    <div class="grid">
+      <div class="fmt"><div class="ext">.pdf</div><small>PDF documents</small></div>
+      <div class="fmt"><div class="ext">.docx</div><small>Word</small></div>
+      <div class="fmt"><div class="ext">.pptx</div><small>PowerPoint</small></div>
+      <div class="fmt"><div class="ext">.xlsx</div><small>Excel → tables</small></div>
+      <div class="fmt"><div class="ext">.html</div><small>Web pages</small></div>
+      <div class="fmt"><div class="ext">.csv</div><small>CSV → tables</small></div>
+      <div class="fmt"><div class="ext">.json</div><small>JSON</small></div>
+      <div class="fmt"><div class="ext">.xml</div><small>XML</small></div>
+      <div class="fmt"><div class="ext">.epub</div><small>E-books</small></div>
+      <div class="fmt"><div class="ext">.zip</div><small>Converts contents</small></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><h3>Drop your file</h3><p>Drag &amp; drop or pick a file. No account, no email, no queue.</p></div>
+      <div class="step"><div class="n">02</div><h3>We convert in memory</h3><p>MarkItDown extracts headings, tables, lists and links. Your file is processed in RAM and never stored.</p></div>
+      <div class="step"><div class="n">03</div><h3>Paste into your LLM</h3><p>Copy the Markdown straight into ChatGPT or Claude, or feed it to your RAG pipeline.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Why Markdown for LLMs?</h2>
+    <div class="steps">
+      <div class="step"><div class="n">✦</div><h3>Models speak it natively</h3><p>Mainstream LLMs are trained on huge amounts of Markdown — they parse headings and tables in it far better than raw PDF text dumps.</p></div>
+      <div class="step"><div class="n">✦</div><h3>Structure survives</h3><p>Copy-pasting from Word or PDF flattens everything into a wall of text. Markdown keeps the hierarchy that gives your prompt context.</p></div>
+      <div class="step"><div class="n">✦</div><h3>Fewer tokens, lower cost</h3><p>Markdown is close to plain text: minimal markup means fewer tokens per document — cheaper and faster prompts.</p></div>
+    </div>
+  </section>
+
+  <section id="api">
+    <h2>Developers: free API</h2>
+    <p class="lead">The same endpoint that powers this page. Send raw bytes, get JSON back. No key needed while in beta.</p>
+    <pre class="code"><span class="c"># Convert any file to Markdown</span>
+curl -X POST --data-binary @report.pdf \
+     -H "x-filename: report.pdf" \
+     https://dropmd.vercel.app/api/convert
+
+<span class="c"># → { "ok": true, "markdown": "# …", "tokens_estimate": 1234 }</span></pre>
+  </section>
+
+  <section id="faq">
+    <h2>FAQ</h2>
+    <details open><summary>Is it really free?</summary><p>Yes. DropMD is free while in beta — no account, no limits on the number of conversions. A Pro tier (larger files, batch conversion, API keys) may come later; the free converter stays.</p></details>
+    <details><summary>What happens to my files?</summary><p>They are converted in memory on a serverless function and discarded immediately. Nothing is written to disk, stored or logged.</p></details>
+    <details><summary>Why is there a 4MB limit?</summary><p>It's the request-size limit of our free serverless infrastructure. Need bigger files? Open an issue on GitHub — it's the first thing the Pro tier will unlock.</p></details>
+    <details><summary>What's the engine behind it?</summary><p>Microsoft's open-source <a href="https://github.com/microsoft/markitdown" target="_blank" rel="noopener">MarkItDown</a> — the same library used in LLM data pipelines. DropMD wraps it in a zero-setup web UI and API.</p></details>
+    <details><summary>Is the output perfect for human readers?</summary><p>It's optimized for machines, not for print. The Markdown is clean and structured, but the goal is LLM consumption — not pixel-perfect document fidelity.</p></details>
+  </section>
+
+  <footer>
+    <div>© 2026 DropMD · built by <a href="https://www.linkedin.com/in/michelelauro/" target="_blank" rel="noopener">Mikel</a></div>
+    <div><a href="https://github.com/MikeIdeas2025/dropmd" target="_blank" rel="noopener">Open source on GitHub</a> · engine: <a href="https://github.com/microsoft/markitdown" target="_blank" rel="noopener">Microsoft MarkItDown</a></div>
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const drop = $("drop"), fileInput = $("file"), loading = $("loading"),
+      result = $("result"), errBox = $("error");
+const MAX = 4 * 1024 * 1024;
+let lastMd = "", lastName = "";
+
+drop.addEventListener("click", () => fileInput.click());
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => {
+  e.preventDefault(); drop.classList.remove("over");
+  if (e.dataTransfer.files.length) convert(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => {
+  if (fileInput.files.length) convert(fileInput.files[0]);
+});
+
+function show(el) {
+  drop.style.display = el === drop ? "block" : "none";
+  loading.style.display = el === loading ? "block" : "none";
+  result.style.display = el === result ? "block" : "none";
+}
+function fail(msg) {
+  show(drop);
+  errBox.textContent = msg;
+  errBox.style.display = "block";
+}
+
+async function convert(file) {
+  errBox.style.display = "none";
+  if (file.size === 0) return fail("That file is empty.");
+  if (file.size > MAX) return fail("File is larger than 4MB. The free tier accepts files up to 4MB — bigger files are on the roadmap.");
+  $("loading-msg").textContent = `Converting ${file.name}…`;
+  show(loading);
+  try {
+    const res = await fetch(`/api/convert?filename=${encodeURIComponent(file.name)}`, {
+      method: "POST",
+      body: file
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.ok) {
+      return fail((data && data.error) || `Conversion failed (HTTP ${res.status}). Try another file.`);
+    }
+    lastMd = data.markdown; lastName = data.filename;
+    $("r-name").textContent = data.filename;
+    $("r-tokens").textContent = `~${data.tokens_estimate.toLocaleString()} tokens`;
+    $("r-md").textContent = data.markdown.trim() || "(The file converted to empty Markdown — it may contain only images or no extractable text.)";
+    show(result);
+  } catch (e) {
+    fail("Network error — check your connection and try again.");
+  }
+}
+
+$("btn-copy").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(lastMd);
+  $("btn-copy").textContent = "Copied ✓";
+  setTimeout(() => $("btn-copy").textContent = "Copy Markdown", 1600);
+});
+$("btn-dl").addEventListener("click", () => {
+  const blob = new Blob([lastMd], { type: "text/markdown" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = lastName.replace(/\.[^.]+$/, "") + ".md";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$("btn-new").addEventListener("click", () => { fileInput.value = ""; show(drop); });
+</script>
+</body>
+</html>
